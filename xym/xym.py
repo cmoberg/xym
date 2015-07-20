@@ -37,19 +37,20 @@ def remove_leading_spaces(mdl):
 
 class YangModuleExtractor:
     """
-    Extract yang modules from IETF RFC or draft text string.
+    Extract YANG modules from IETF RFC or draft text string.
     """
     MODULE_STATEMENT = re.compile('''^[ \t]*(sub)?module +(["'])?([-A-Za-z0-9]*(@[0-9-]*)?)(["'])? *\{.*$''')
     PAGE_TAG = re.compile('.*\[Page [0-9]*\].*')
     CODE_ENDS_TAG = re.compile('^[ \t]*<CODE ENDS>.*$')
     CODE_BEGINS_TAG = re.compile('^[ \t]*<CODE BEGINS>( *file( +"(.*)")?)?.*$')
+    YANG_FILE_SUFFIX = re.compile('.*\.yang$')
 
     def __init__(self, src_id, dst_dir, strict, debug_level):
         """
         Initializes class-global variables.
         :param src_id: text string containing the draft or RFC text from which YANG
                       module(s) are to be extracted
-        :param dst_dir: Directory where to put the extracted yang module(s)
+        :param dst_dir: Directory where to put the extracted YANG module(s)
         :param strict: Mode - if 'True', enforce <CODE BEGINS> / <CODE ENDS>;
                        if 'False', just look for 'module <name> {' and '}'
         :param debug_level: If > 0 print some debug statements to the console
@@ -107,10 +108,10 @@ class YangModuleExtractor:
 
     def write_model_to_file(self, mdl, fn):
         """
-        Write a yang model that was extracted from a source identifier
+        Write a YANG model that was extracted from a source identifier
         (URL or source .txt file) to a .yang destination file
         :param mdl: YANG model, as a list of lines
-        :param fn: Name of the yang model file
+        :param fn: Name of the YANG model file
         :return:
         """
         # Write the model to file
@@ -125,13 +126,13 @@ class YangModuleExtractor:
                 of.close()
                 self.extracted_models.append(fn)
         else:
-            self.error("Output file name can not be determined; yang file not created")
+            self.error("Output file name can not be determined; YANG file not created")
 
     def extract_yang_model(self, content):
         """
-        Extracts one or more yang models from a RFC/draft text string in which the
+        Extracts one or more YANG models from an RFC or draft text string in which the
         models are specified. The function skips over page formatting (headers
-        and footers) and performs basic yang module syntax checking. In strict
+        and footers) and performs basic YANG module syntax checking. In strict
         mode, the function also enforces the <CODE BEGINS> / <CODE ENDS> tags
         - a model is not extracted unless the tags are present.
         :return: None
@@ -166,11 +167,11 @@ class YangModuleExtractor:
                 else:
                     level = 1
                     if in_model is False:
-                        self.warning("Line %d - Yang module with no <CODE BEGINS>" % i)
+                        self.warning("Line %d - YANG module with no <CODE BEGINS>" % i)
                 if not output_file and level == 1:
                     output_file = '%s.yang' % match.groups()[2].strip('"\'')
                     if self.debug_level > 0:
-                        print('   Getting yang file name from module name: %s' % output_file)
+                        print('   Getting YANG file name from module name: %s' % output_file)
 
             if level > 0:
                 # Try to match '[Page <page_num>]'
@@ -206,7 +207,7 @@ class YangModuleExtractor:
             # Try to match '<CODE BEGINS>'
             match = self.CODE_BEGINS_TAG.match(line)
             if match:
-                # Found the beginning of the yang module code section; make sure we're not parsing a model already
+                # Found the beginning of the YANG module code section; make sure we're not parsing a model already
                 if level > 0:
                     self.error("Line %d - <CODE BEGINS> within a model" % i)
                     return
@@ -214,14 +215,17 @@ class YangModuleExtractor:
                     self.error("Line %d - Misplaced <CODE BEGINS> or missing <CODE ENDS>" % i)
                 in_model = True
                 mg = match.groups()
-                # Get the yang module's file name
+                # Get the YANG module's file name
                 if mg[2]:
                     output_file = mg[2].strip()
                 else:
                     if mg[0] and mg[1] is None:
                         self.warning('Line %d - Missing file name in <CODE BEGINS>' % i)
                     else:
-                        self.warning("Line %d - Yang file not specified in <CODE BEGINS>" % i)
+                        self.warning("Line %d - YANG file not specified in <CODE BEGINS>" % i)
+                if not self.YANG_FILE_SUFFIX.match(output_file):
+                    self.warning('Line %d - File name seems to suggest non-YANG file "%s"' % (i, output_file))
+
             i += 1
         if level > 0:
             self.error("<End of File> - EOF encountered while parsing the model")
@@ -232,13 +236,13 @@ class YangModuleExtractor:
 
 def xym(source_id, srcdir, dstdir, strict, debug_level):
     """
-    Extracts yang model from an IETF RFC or draft text file.
+    Extracts YANG model from an IETF RFC or draft text file.
     This is the main (external) API entry for the module.
     :param source_id: identifier (file name or URL) of a draft or RFC file containing
-           one or more yang models
+           one or more YANG models
     :param srcdir: If source_id points to a file, the optional parameter identifies
            the directory where the file is located
-    :param dstdir: Directory where to put the extracted yang models
+    :param dstdir: Directory where to put the extracted YANG models
     :param strict: Strict syntax enforcement
     :param debug_level: Determines how much debug output is printed to the console
     :return: None
@@ -273,11 +277,11 @@ if __name__ == "__main__":
     """
     Command line utility / test
     """
-    parser = argparse.ArgumentParser(description='Extracts one or more yang models from an IETF RFC/draft text file')
+    parser = argparse.ArgumentParser(description='Extracts one or more YANG models from an IETF RFC/draft text file')
     parser.add_argument("source", help="The URL or file name of the RFC/draft text from which to get the model")
     parser.add_argument("--srcdir", default='.', help="Optional: directory where to find the source text; "
                                                       "default is './'")
-    parser.add_argument("--dstdir", default='.', help="Optional: directory where to put the extracted yang module(s); "
+    parser.add_argument("--dstdir", default='.', help="Optional: directory where to put the extracted YANG module(s); "
                                                       "default is './'")
     parser.add_argument("--strict", type=bool, default=False, help='Optional flag that determines syntax enforcement; '
                                                                    "'If set to 'True', the <CODE BEGINS> / <CODE ENDS> "
