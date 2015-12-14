@@ -6,10 +6,11 @@ def read(fname):
 
 setup(
   name = 'xym',
-  version = '0.1.2',
+  version = '0.2',
   description = ('A tool to extract YANG modules from IETF RFCs and Drafts'),
   long_description=read('README.md'),
   packages = ['xym'],
+  scripts = ['bin/xym'],
   author = 'Jan Medved',
   author_email = 'jmedved@cisco.com',
   license = 'New-style BSD',

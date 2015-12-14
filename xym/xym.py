@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 from __future__ import print_function  # Must be at the beginning of the file
 import argparse
 from collections import Counter
@@ -12,7 +12,7 @@ __author__ = 'jmedved@cisco.com, calle@tail-f.com, bclaise@cisco.com'
 __copyright__ = "Copyright(c) 2015, Cisco Systems, Inc."
 __license__ = "New-style BSD"
 __email__ = "jmedved@cisco.com"
-__version__ = "0.1.1"
+__version__ = "0.2"
 
 if sys.version_info < (2, 7, 9):
     disable_warnings()
@@ -44,6 +44,7 @@ class YangModuleExtractor:
     CODE_ENDS_TAG = re.compile('^[ \t]*<CODE ENDS>.*$')
     CODE_BEGINS_TAG = re.compile('^[ \t]*<CODE BEGINS>( *file( +"(.*)")?)?.*$')
     YANG_FILE_SUFFIX = re.compile('.*\.yang$')
+    EXAMPLE_MODULE_PREFIX = re.compile('example-.*')
 
     def __init__(self, src_id, dst_dir, strict, debug_level):
         """
@@ -223,7 +224,7 @@ class YangModuleExtractor:
                         self.warning('Line %d - Missing file name in <CODE BEGINS>' % i)
                     else:
                         self.warning("Line %d - YANG file not specified in <CODE BEGINS>" % i)
-                if not self.YANG_FILE_SUFFIX.match(output_file):
+                if output_file and not self.YANG_FILE_SUFFIX.match(output_file):
                     self.warning('Line %d - File name seems to suggest non-YANG file "%s"' % (i, output_file))
 
             i += 1
@@ -271,30 +272,3 @@ def xym(source_id, srcdir, dstdir, strict, debug_level):
         except IOError as ioe:
             print(ioe)
     return ye.get_extracted_models()
-
-
-if __name__ == "__main__":
-    """
-    Command line utility / test
-    """
-    parser = argparse.ArgumentParser(description='Extracts one or more YANG models from an IETF RFC/draft text file')
-    parser.add_argument("source", help="The URL or file name of the RFC/draft text from which to get the model")
-    parser.add_argument("--srcdir", default='.', help="Optional: directory where to find the source text; "
-                                                      "default is './'")
-    parser.add_argument("--dstdir", default='.', help="Optional: directory where to put the extracted YANG module(s); "
-                                                      "default is './'")
-    parser.add_argument("--strict", type=bool, default=False, help='Optional flag that determines syntax enforcement; '
-                                                                   "'If set to 'True', the <CODE BEGINS> / <CODE ENDS> "
-                                                                   "tags are required; default is 'False'")
-    parser.add_argument("--debug", type=int, default=0, help="Optional: debug level - determines the amount of debug "
-                                                             "info printed to console; default is 0 (no debug info "
-                                                             "printed)")
-    args = parser.parse_args()
-
-    extracted_models = xym(args.source, args.srcdir, args.dstdir, args.strict, args.debug)
-    if len(extracted_models) > 0:
-        print("Created the following models::")
-        for em in extracted_models:
-            print('   %s' % em)
-    else:
-        print('No models created.')
